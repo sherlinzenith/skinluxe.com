@@ -1,59 +1,73 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ObjectId } = require('mongodb');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static('.')); // Serve static files
 
-
+// MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/skinluxe';
 let db;
-
-
-console.log('=== MONGODB CONFIGURATION CHECK ===');
-console.log('MONGODB_URI exists:', !!process.env.MONGODB_URI);
-if (process.env.MONGODB_URI) {
-    console.log('MONGODB_URI starts with:', process.env.MONGODB_URI.substring(0, 20) + '...');
-}
-console.log('MongoDB package available:', require('mongodb') ? 'Yes' : 'No');
+let client;
 
 async function connectDB() {
     try {
-        console.log(' Attempting MongoDB connection...');
-        console.log('Connection string:', process.env.MONGODB_URI ? 'Present' : 'MISSING!');
+        console.log('🔄 Attempting MongoDB connection...');
         
-        const client = new MongoClient(MONGODB_URI);
+        if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017/skinluxe') {
+            console.log('❌ MONGODB_URI not configured. Please set MONGODB_URI environment variable.');
+            return false;
+        }
+
+        client = new MongoClient(MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+
         await client.connect();
-        db = client.db('skinluxe');
-        console.log('Connected to MongoDB successfully!');
+        db = client.db();
+        console.log('✅ Connected to MongoDB successfully!');
         
-        const collections = await db.listCollections().toArray();
-        console.log(' Available collections:', collections.map(c => c.name));
+        // Test the connection
+        await db.command({ ping: 1 });
+        console.log('📊 MongoDB ping successful');
         
-        
-        const productCount = await db.collection('products').countDocuments();
-        console.log(` Products in MongoDB: ${productCount}`);
-        
+        return true;
     } catch (error) {
-        console.error(' MongoDB connection FAILED:', error.message);
-        console.error('Full error:', error);
+        console.error('❌ MongoDB connection failed:', error.message);
+        return false;
     }
 }
+
+// Initialize with sample products
 async function initializeProducts() {
     try {
         if (!db) {
-            console.log(' MongoDB not connected - skipping initialization');
+            console.log('📝 MongoDB not connected - skipping initialization');
             return;
         }
+
+        // Create products collection if it doesn't exist
+        const collections = await db.listCollections().toArray();
+        const productsCollectionExists = collections.some(c => c.name === 'products');
         
+        if (!productsCollectionExists) {
+            await db.createCollection('products');
+            console.log('📁 Created products collection');
+        }
+
         const productCount = await db.collection('products').countDocuments();
-        console.log(`📊 Current products in MongoDB: ${productCount}`);
-        
+        console.log(`📊 Current products in database: ${productCount}`);
+
         if (productCount === 0) {
-            console.log('🔄 Initializing MongoDB with default products...');
+            console.log('🔄 Initializing database with sample products...');
+            
             const defaultProducts = [
                 {
                     name: "Hydrating Face Serum",
@@ -78,7 +92,8 @@ async function initializeProducts() {
                         "Dermatologist tested",
                         "Cruelty-free"
                     ],
-                    createdAt: new Date().toISOString()
+                    createdAt: new Date(),
+                    updatedAt: new Date()
                 },
                 {
                     name: "Vitamin C Cream",
@@ -102,7 +117,8 @@ async function initializeProducts() {
                         "Protects against environmental stress",
                         "Lightweight texture"
                     ],
-                    createdAt: new Date().toISOString()
+                    createdAt: new Date(),
+                    updatedAt: new Date()
                 },
                 {
                     name: "Gentle Cleanser",
@@ -126,200 +142,214 @@ async function initializeProducts() {
                         "Non-drying formula",
                         "Soothing and calming"
                     ],
-                    createdAt: new Date().toISOString()
-                },
-                {
-                    name: "Night Repair Oil",
-                    description: "Overnight treatment for skin regeneration",
-                    fullDescription: "Wake up to rejuvenated skin with our Night Repair Oil. This intensive overnight treatment works while you sleep to repair and restore your skin's natural barrier, leaving you with a radiant glow in the morning.",
-                    price: 2199,
-                    originalPrice: 2599,
-                    discount: 15,
-                    image: "https://i.pinimg.com/736x/62/07/d7/6207d7e957dc3c58f028b60195bdbed6.jpg",
-                    isBestSeller: false,
-                    isNew: true,
-                    reviews: 23456,
-                    sizes: [
-                        { value: '30ml', label: '30ml' },
-                        { value: '50ml', label: '50ml' }
-                    ],
-                    features: [
-                        "Overnight skin regeneration",
-                        "Strengthens skin barrier",
-                        "Reduces fine lines",
-                        "Non-comedogenic",
-                        "Fast absorbing"
-                    ],
-                    createdAt: new Date().toISOString()
-                },
-                {
-                    name: "SPF 50 Sunscreen",
-                    description: "Lightweight daily protection",
-                    fullDescription: "Protect your skin from harmful UV rays with our lightweight SPF 50 Sunscreen. This non-greasy formula provides broad-spectrum protection while keeping your skin hydrated throughout the day.",
-                    price: 899,
-                    originalPrice: 999,
-                    discount: 10,
-                    image: "https://i.pinimg.com/1200x/d5/48/26/d54826343b2277addbc534c5d21fc9f0.jpg",
-                    isBestSeller: false,
-                    isNew: false,
-                    reviews: 67890,
-                    sizes: [
-                        { value: '50ml', label: '50ml' },
-                        { value: '100ml', label: '100ml' }
-                    ],
-                    features: [
-                        "Broad-spectrum SPF 50 protection",
-                        "Lightweight and non-greasy",
-                        "Water resistant",
-                        "Suitable for sensitive skin",
-                        "No white cast"
-                    ],
-                    createdAt: new Date().toISOString()
-                },
-                {
-                    name: "Eye Cream",
-                    description: "Reduces puffiness and dark circles",
-                    fullDescription: "Target the delicate eye area with our specialized Eye Cream. Formulated with caffeine and vitamin K, it helps to reduce puffiness, dark circles, and fine lines for brighter, more youthful-looking eyes.",
-                    price: 1499,
-                    originalPrice: 1799,
-                    discount: 17,
-                    image: "https://i.pinimg.com/1200x/59/58/d2/5958d2ca2f50f7f6ff13f704ab8e7344.jpg",
-                    isBestSeller: false,
-                    isNew: true,
-                    reviews: 34567,
-                    sizes: [
-                        { value: '15ml', label: '15ml' },
-                        { value: '30ml', label: '30ml' }
-                    ],
-                    features: [
-                        "Reduces puffiness and dark circles",
-                        "Contains caffeine and vitamin K",
-                        "Suitable for sensitive eye area",
-                        "Fast absorbing",
-                        "Fragrance-free"
-                    ],
-                    createdAt: new Date().toISOString()
+                    createdAt: new Date(),
+                    updatedAt: new Date()
                 }
             ];
-            
+
             const result = await db.collection('products').insertMany(defaultProducts);
-            console.log(` Added ${result.insertedCount} default products to MongoDB`);
+            console.log(`✅ Added ${result.insertedCount} sample products to database`);
+        } else {
+            console.log('✅ Database already contains products');
         }
     } catch (error) {
-        console.error('Error initializing products:', error);
+        console.error('❌ Error initializing products:', error);
     }
 }
 
 // Routes
 app.get('/api/products', async (req, res) => {
     try {
-        console.log(' GET /api/products - Fetching from MongoDB...');
+        console.log('📦 Fetching products from database...');
         
         if (!db) {
-            console.log(' MongoDB not connected - returning empty array');
-            return res.json([]);
+            console.log('❌ Database not connected');
+            return res.status(500).json({ 
+                error: 'Database not available',
+                fallback: true 
+            });
         }
         
-        const products = await db.collection('products').find().toArray();
-        console.log(` Found ${products.length} products in MongoDB`);
+        const products = await db.collection('products')
+            .find()
+            .sort({ createdAt: -1 })
+            .toArray();
         
+        console.log(`✅ Found ${products.length} products`);
         res.json(products);
     } catch (error) {
-        console.error(' MongoDB fetch error:', error);
-        res.status(500).json({ error: 'Failed to fetch products' });
+        console.error('❌ Error fetching products:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch products',
+            fallback: true 
+        });
     }
 });
 
 app.post('/api/products', async (req, res) => {
     try {
-        console.log(' POST /api/products - Adding to MongoDB...');
-        console.log('Request body:', req.body);
+        console.log('➕ Adding new product to database...');
         
         if (!db) {
-            console.log(' MongoDB not connected - cannot add product');
             return res.status(500).json({ error: 'Database not connected' });
         }
-        
+
         const newProduct = {
             ...req.body,
-            createdAt: new Date().toISOString()
+            createdAt: new Date(),
+            updatedAt: new Date()
         };
-        
+
+        // Validate required fields
+        if (!newProduct.name || !newProduct.price || !newProduct.image) {
+            return res.status(400).json({ error: 'Name, price, and image are required' });
+        }
+
         const result = await db.collection('products').insertOne(newProduct);
-        newProduct._id = result.insertedId;
-        
-        console.log(' Product added to MongoDB:', newProduct._id);
-        res.status(201).json(newProduct);
+        const insertedProduct = { ...newProduct, _id: result.insertedId };
+
+        console.log('✅ Product added successfully:', result.insertedId);
+        res.status(201).json(insertedProduct);
     } catch (error) {
-        console.error(' Error adding product to MongoDB:', error);
+        console.error('❌ Error adding product:', error);
         res.status(500).json({ error: 'Failed to add product' });
+    }
+});
+
+app.put('/api/products/:id', async (req, res) => {
+    try {
+        if (!db) {
+            return res.status(500).json({ error: 'Database not connected' });
+        }
+
+        const productId = req.params.id;
+        const updateData = {
+            ...req.body,
+            updatedAt: new Date()
+        };
+
+        const result = await db.collection('products').updateOne(
+            { _id: new ObjectId(productId) },
+            { $set: updateData }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+
+        res.json({ message: 'Product updated successfully' });
+    } catch (error) {
+        console.error('Error updating product:', error);
+        res.status(500).json({ error: 'Failed to update product' });
     }
 });
 
 app.delete('/api/products/:id', async (req, res) => {
     try {
-        console.log(` DELETE /api/products/${req.params.id}`);
+        console.log(`🗑️ Deleting product: ${req.params.id}`);
         
         if (!db) {
-            console.log(' MongoDB not connected - cannot delete product');
             return res.status(500).json({ error: 'Database not connected' });
         }
-        
+
         const result = await db.collection('products').deleteOne({ 
             _id: new ObjectId(req.params.id) 
         });
-        
-        if (result.deletedCount === 1) {
-            console.log(' Product deleted from MongoDB');
-            res.json({ message: 'Product deleted successfully' });
-        } else {
-            console.log(' Product not found in MongoDB');
-            res.status(404).json({ error: 'Product not found' });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: 'Product not found' });
         }
+
+        console.log('✅ Product deleted successfully');
+        res.json({ message: 'Product deleted successfully' });
     } catch (error) {
-        console.error(' Error deleting product from MongoDB:', error);
+        console.error('❌ Error deleting product:', error);
         res.status(500).json({ error: 'Failed to delete product' });
     }
 });
 
+// Test endpoints
 app.get('/api/test', async (req, res) => {
     try {
         let productCount = 0;
+        let databaseStatus = 'disconnected';
+        
         if (db) {
+            databaseStatus = 'connected';
             productCount = await db.collection('products').countDocuments();
         }
-        
+
         res.json({ 
-            message: 'Server is working!', 
+            message: 'SkinLuxe API Server is running!',
+            database: databaseStatus,
             productCount: productCount,
-            databaseConnected: !!db,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV || 'development'
         });
     } catch (error) {
         res.json({ 
-            message: 'Server is working!', 
+            message: 'Server is running but database has issues',
+            database: 'error',
             productCount: 0,
-            databaseConnected: false,
             timestamp: new Date().toISOString()
         });
     }
 });
-app.get('/health', (req, res) => {
-    res.status(200).json({ 
-        status: 'OK', 
-        service: 'SkinLuxe API',
-        databaseConnected: !!db,
-        timestamp: new Date().toISOString()
-    });
-});
-connectDB().then(() => {
-    initializeProducts().then(() => {
-        app.listen(PORT, () => {
-            console.log(` Server running on port ${PORT}`);
-            console.log(` Products API: http://localhost:${PORT}/api/products`);
-            console.log(`  Test endpoint: http://localhost:${PORT}/api/test`);
-            console.log(`  Health check: http://localhost:${PORT}/health`);
-            console.log(`  Database: ${db ? 'Connected' : 'Not Connected'}`);
+
+app.get('/health', async (req, res) => {
+    try {
+        let dbStatus = 'disconnected';
+        if (db) {
+            await db.command({ ping: 1 });
+            dbStatus = 'connected';
+        }
+
+        res.status(200).json({ 
+            status: 'OK',
+            service: 'SkinLuxe API',
+            database: dbStatus,
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime()
         });
-    });
+    } catch (error) {
+        res.status(500).json({ 
+            status: 'ERROR',
+            service: 'SkinLuxe API',
+            database: 'disconnected',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
 });
+
+// Serve the main page
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Start server
+async function startServer() {
+    const dbConnected = await connectDB();
+    
+    if (dbConnected) {
+        await initializeProducts();
+    } else {
+        console.log('⚠️ Starting server without database connection');
+    }
+
+    app.listen(PORT, () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+        console.log(`📍 Products API: http://localhost:${PORT}/api/products`);
+        console.log(`📍 Test endpoint: http://localhost:${PORT}/api/test`);
+        console.log(`📍 Health check: http://localhost:${PORT}/health`);
+        console.log(`📊 Database: ${db ? 'Connected ✅' : 'Not Connected ❌'}`);
+        
+        if (!db) {
+            console.log('💡 To enable database features:');
+            console.log('   1. Set MONGODB_URI environment variable');
+            console.log('   2. Restart the server');
+        }
+    });
+}
+
+startServer().catch(console.error);
