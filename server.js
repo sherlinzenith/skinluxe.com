@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -7,156 +9,276 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-const products = [
-    {
-        id: 1,
-        name: "Hydrating Face Serum",
-        description: "Deeply moisturizing serum with hyaluronic acid",
-        fullDescription: "Our Hydrating Face Serum is specially formulated with hyaluronic acid to provide intense moisture to your skin. Perfect for all skin types, this serum helps to plump and hydrate your skin, reducing the appearance of fine lines and wrinkles.",
-        price: 1299,
-        originalPrice: 1499,
-        discount: 13,
-        image: "https://i.pinimg.com/736x/2c/08/66/2c0866e441664605b01a59c44beb7279.jpg",
-        isBestSeller: true,
-        reviews: 86675,
-        sizes: [
-            { value: '30ml', label: '30ml' },
-            { value: '50ml', label: '50ml' },
-            { value: '100ml', label: '100ml' }
-        ],
-        features: [
-            "Contains hyaluronic acid for deep hydration",
-            "Suitable for all skin types",
-            "Non-greasy formula",
-            "Dermatologist tested",
-            "Cruelty-free"
-        ]
-    },
-    {
-        id: 2,
-        name: "Vitamin C Cream",
-        description: "Brightening cream with antioxidant protection",
-        fullDescription: "Enhance your skin's radiance with our Vitamin C Cream. Packed with antioxidants, this cream helps to brighten your complexion, reduce dark spots, and protect your skin from environmental damage.",
-        price: 1599,
-        originalPrice: 1899,
-        discount: 16,
-        image: "https://i.pinimg.com/1200x/57/18/82/5718822e29549d7ef4ece3a403f0c5a8.jpg",
-        isBestSeller: true,
-        reviews: 72345,
-        sizes: [
-            { value: '50ml', label: '50ml' },
-            { value: '100ml', label: '100ml' }
-        ],
-        features: [
-            "Brightens and evens skin tone",
-            "Rich in antioxidants",
-            "Reduces appearance of dark spots",
-            "Protects against environmental stress",
-            "Lightweight texture"
-        ]
-    },
-    {
-        id: 3,
-        name: "Gentle Cleanser",
-        description: "Soothing cleanser for all skin types",
-        fullDescription: "Our Gentle Cleanser is perfect for daily use. It effectively removes dirt and impurities without stripping your skin's natural oils. Formulated with soothing ingredients, it's ideal for sensitive skin.",
-        price: 799,
-        originalPrice: 899,
-        discount: 11,
-        image: "https://i.pinimg.com/1200x/b4/37/ea/b437ea39ad177d37ca76cb3a7e25b5fa.jpg",
-        reviews: 45678,
-        sizes: [
-            { value: '150ml', label: '150ml' },
-            { value: '250ml', label: '250ml' }
-        ],
-        features: [
-            "Gentle on sensitive skin",
-            "pH balanced formula",
-            "Removes makeup effectively",
-            "Non-drying formula",
-            "Soothing and calming"
-        ]
-    },
-    {
-        id: 4,
-        name: "Night Repair Oil",
-        description: "Overnight treatment for skin regeneration",
-        fullDescription: "Wake up to rejuvenated skin with our Night Repair Oil. This intensive overnight treatment works while you sleep to repair and restore your skin's natural barrier, leaving you with a radiant glow in the morning.",
-        price: 2199,
-        originalPrice: 2599,
-        discount: 15,
-        image: "https://i.pinimg.com/736x/62/07/d7/6207d7e957dc3c58f028b60195bdbed6.jpg",
-        isNew: true,
-        reviews: 23456,
-        sizes: [
-            { value: '30ml', label: '30ml' },
-            { value: '50ml', label: '50ml' }
-        ],
-        features: [
-            "Overnight skin regeneration",
-            "Strengthens skin barrier",
-            "Reduces fine lines",
-            "Non-comedogenic",
-            "Fast absorbing"
-        ]
-    },
-    {
-        id: 5,
-        name: "SPF 50 Sunscreen",
-        description: "Lightweight daily protection",
-        fullDescription: "Protect your skin from harmful UV rays with our lightweight SPF 50 Sunscreen. This non-greasy formula provides broad-spectrum protection while keeping your skin hydrated throughout the day.",
-        price: 899,
-        originalPrice: 999,
-        discount: 10,
-        image: "https://i.pinimg.com/1200x/d5/48/26/d54826343b2277addbc534c5d21fc9f0.jpg",
-        reviews: 67890,
-        sizes: [
-            { value: '50ml', label: '50ml' },
-            { value: '100ml', label: '100ml' }
-        ],
-        features: [
-            "Broad-spectrum SPF 50 protection",
-            "Lightweight and non-greasy",
-            "Water resistant",
-            "Suitable for sensitive skin",
-            "No white cast"
-        ]
-    },
-    {
-        id: 6,
-        name: "Eye Cream",
-        description: "Reduces puffiness and dark circles",
-        fullDescription: "Target the delicate eye area with our specialized Eye Cream. Formulated with caffeine and vitamin K, it helps to reduce puffiness, dark circles, and fine lines for brighter, more youthful-looking eyes.",
-        price: 1499,
-        originalPrice: 1799,
-        discount: 17,
-        image: "https://i.pinimg.com/1200x/59/58/d2/5958d2ca2f50f7f6ff13f704ab8e7344.jpg",
-        isNew: true,
-        reviews: 34567,
-        sizes: [
-            { value: '15ml', label: '15ml' },
-            { value: '30ml', label: '30ml' }
-        ],
-        features: [
-            "Reduces puffiness and dark circles",
-            "Contains caffeine and vitamin K",
-            "Suitable for sensitive eye area",
-            "Fast absorbing",
-            "Fragrance-free"
-        ]
+const DATA_FILE = path.join(__dirname, 'data', 'products.json');
+
+
+const dataDir = path.dirname(DATA_FILE);
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+
+const readProducts = () => {
+    try {
+        if (fs.existsSync(DATA_FILE)) {
+            const data = fs.readFileSync(DATA_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('Error reading products file:', error);
     }
-];
+    return [];
+};
+
+const writeProducts = (products) => {
+    try {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(products, null, 2));
+        return true;
+    } catch (error) {
+        console.error('Error writing products file:', error);
+        return false;
+    }
+};
+
+
+const initializeProducts = () => {
+    const existingProducts = readProducts();
+    if (existingProducts.length === 0) {
+        const defaultProducts = [
+            {
+                id: 1,
+                name: "Hydrating Face Serum",
+                description: "Deeply moisturizing serum with hyaluronic acid",
+                fullDescription: "Our Hydrating Face Serum is specially formulated with hyaluronic acid to provide intense moisture to your skin. Perfect for all skin types, this serum helps to plump and hydrate your skin, reducing the appearance of fine lines and wrinkles.",
+                price: 1299,
+                originalPrice: 1499,
+                discount: 13,
+                image: "https://i.pinimg.com/736x/2c/08/66/2c0866e441664605b01a59c44beb7279.jpg",
+                isBestSeller: true,
+                isNew: false,
+                reviews: 86675,
+                sizes: [
+                    { value: '30ml', label: '30ml' },
+                    { value: '50ml', label: '50ml' },
+                    { value: '100ml', label: '100ml' }
+                ],
+                features: [
+                    "Contains hyaluronic acid for deep hydration",
+                    "Suitable for all skin types",
+                    "Non-greasy formula",
+                    "Dermatologist tested",
+                    "Cruelty-free"
+                ],
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 2,
+                name: "Vitamin C Cream",
+                description: "Brightening cream with antioxidant protection",
+                fullDescription: "Enhance your skin's radiance with our Vitamin C Cream. Packed with antioxidants, this cream helps to brighten your complexion, reduce dark spots, and protect your skin from environmental damage.",
+                price: 1599,
+                originalPrice: 1899,
+                discount: 16,
+                image: "https://i.pinimg.com/1200x/57/18/82/5718822e29549d7ef4ece3a403f0c5a8.jpg",
+                isBestSeller: true,
+                isNew: false,
+                reviews: 72345,
+                sizes: [
+                    { value: '50ml', label: '50ml' },
+                    { value: '100ml', label: '100ml' }
+                ],
+                features: [
+                    "Brightens and evens skin tone",
+                    "Rich in antioxidants",
+                    "Reduces appearance of dark spots",
+                    "Protects against environmental stress",
+                    "Lightweight texture"
+                ],
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 3,
+                name: "Gentle Cleanser",
+                description: "Soothing cleanser for all skin types",
+                fullDescription: "Our Gentle Cleanser is perfect for daily use. It effectively removes dirt and impurities without stripping your skin's natural oils. Formulated with soothing ingredients, it's ideal for sensitive skin.",
+                price: 799,
+                originalPrice: 899,
+                discount: 11,
+                image: "https://i.pinimg.com/1200x/b4/37/ea/b437ea39ad177d37ca76cb3a7e25b5fa.jpg",
+                isBestSeller: false,
+                isNew: false,
+                reviews: 45678,
+                sizes: [
+                    { value: '150ml', label: '150ml' },
+                    { value: '250ml', label: '250ml' }
+                ],
+                features: [
+                    "Gentle on sensitive skin",
+                    "pH balanced formula",
+                    "Removes makeup effectively",
+                    "Non-drying formula",
+                    "Soothing and calming"
+                ],
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 4,
+                name: "Night Repair Oil",
+                description: "Overnight treatment for skin regeneration",
+                fullDescription: "Wake up to rejuvenated skin with our Night Repair Oil. This intensive overnight treatment works while you sleep to repair and restore your skin's natural barrier, leaving you with a radiant glow in the morning.",
+                price: 2199,
+                originalPrice: 2599,
+                discount: 15,
+                image: "https://i.pinimg.com/736x/62/07/d7/6207d7e957dc3c58f028b60195bdbed6.jpg",
+                isBestSeller: false,
+                isNew: true,
+                reviews: 23456,
+                sizes: [
+                    { value: '30ml', label: '30ml' },
+                    { value: '50ml', label: '50ml' }
+                ],
+                features: [
+                    "Overnight skin regeneration",
+                    "Strengthens skin barrier",
+                    "Reduces fine lines",
+                    "Non-comedogenic",
+                    "Fast absorbing"
+                ],
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 5,
+                name: "SPF 50 Sunscreen",
+                description: "Lightweight daily protection",
+                fullDescription: "Protect your skin from harmful UV rays with our lightweight SPF 50 Sunscreen. This non-greasy formula provides broad-spectrum protection while keeping your skin hydrated throughout the day.",
+                price: 899,
+                originalPrice: 999,
+                discount: 10,
+                image: "https://i.pinimg.com/1200x/d5/48/26/d54826343b2277addbc534c5d21fc9f0.jpg",
+                isBestSeller: false,
+                isNew: false,
+                reviews: 67890,
+                sizes: [
+                    { value: '50ml', label: '50ml' },
+                    { value: '100ml', label: '100ml' }
+                ],
+                features: [
+                    "Broad-spectrum SPF 50 protection",
+                    "Lightweight and non-greasy",
+                    "Water resistant",
+                    "Suitable for sensitive skin",
+                    "No white cast"
+                ],
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 6,
+                name: "Eye Cream",
+                description: "Reduces puffiness and dark circles",
+                fullDescription: "Target the delicate eye area with our specialized Eye Cream. Formulated with caffeine and vitamin K, it helps to reduce puffiness, dark circles, and fine lines for brighter, more youthful-looking eyes.",
+                price: 1499,
+                originalPrice: 1799,
+                discount: 17,
+                image: "https://i.pinimg.com/1200x/59/58/d2/5958d2ca2f50f7f6ff13f704ab8e7344.jpg",
+                isBestSeller: false,
+                isNew: true,
+                reviews: 34567,
+                sizes: [
+                    { value: '15ml', label: '15ml' },
+                    { value: '30ml', label: '30ml' }
+                ],
+                features: [
+                    "Reduces puffiness and dark circles",
+                    "Contains caffeine and vitamin K",
+                    "Suitable for sensitive eye area",
+                    "Fast absorbing",
+                    "Fragrance-free"
+                ],
+                createdAt: new Date().toISOString()
+            }
+        ];
+        writeProducts(defaultProducts);
+        return defaultProducts;
+    }
+    return existingProducts;
+};
+
+
+let products = initializeProducts();
+
 
 app.get('/api/products', (req, res) => {
-    res.json(products);
+    try {
+        res.json(products);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+
+app.post('/api/products', (req, res) => {
+    try {
+        const newProduct = {
+            id: Date.now(),
+            ...req.body,
+            createdAt: new Date().toISOString()
+        };
+        
+        products.push(newProduct);
+        
+        if (writeProducts(products)) {
+            res.status(201).json(newProduct);
+        } else {
+            res.status(500).json({ error: 'Failed to save product' });
+        }
+    } catch (error) {
+        console.error('Error adding product:', error);
+        res.status(400).json({ error: 'Invalid product data' });
+    }
+});
+
+app.delete('/api/products/:id', (req, res) => {
+    try {
+        const productId = parseInt(req.params.id);
+        const initialLength = products.length;
+        products = products.filter(p => p.id !== productId);
+        
+        if (products.length < initialLength) {
+            if (writeProducts(products)) {
+                res.status(200).json({ message: 'Product deleted successfully' });
+            } else {
+                res.status(500).json({ error: 'Failed to update products file' });
+            }
+        } else {
+            res.status(404).json({ error: 'Product not found' });
+        }
+    } catch (error) {
+        console.error('Error deleting product:', error);
+        res.status(400).json({ error: 'Invalid product ID' });
+    }
 });
 
 app.get('/api/test', (req, res) => {
-    res.json({ message: 'Server is working! ' });
+    res.json({ 
+        message: 'Server is working!', 
+        productCount: products.length,
+        timestamp: new Date().toISOString()
+    });
+});
+
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'OK', 
+        service: 'SkinLuxe API',
+        timestamp: new Date().toISOString()
+    });
 });
 
 app.listen(PORT, () => {
     console.log(` Server running on port ${PORT}`);
-    console.log(` Products: http://localhost:${PORT}/api/products`);
-    console.log(` Test: http://localhost:${PORT}/api/test`);
+    console.log(` Products API: http://localhost:${PORT}/api/products`);
+    console.log(`  Test endpoint: http://localhost:${PORT}/api/test`);
+    console.log(`  Health check: http://localhost:${PORT}/health`);
+    console.log(` Data file: ${DATA_FILE}`);
+    console.log(` Total products: ${products.length}`);
 });
