@@ -8,8 +8,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
-
-// In-memory product data (no database)
 const products = [
     {
         id: 1,
@@ -157,15 +155,10 @@ const products = [
         ]
     }
 ];
-
-// API Routes
 app.get('/api/products', (req, res) => {
     res.json(products);
 });
-
-// Simulate product operations (data stays in memory)
 app.post('/api/products', (req, res) => {
-    // For demo purposes - product would be managed in localStorage on frontend
     res.json({ 
         message: 'Product management handled by frontend localStorage',
         status: 'success'
@@ -173,7 +166,6 @@ app.post('/api/products', (req, res) => {
 });
 
 app.delete('/api/products/:id', (req, res) => {
-    // For demo purposes - product would be managed in localStorage on frontend
     res.json({ 
         message: 'Product management handled by frontend localStorage',
         status: 'success'
@@ -197,17 +189,15 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
-
-// Serve the main application
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
-    console.log('🚀 SkinLuxe Server running on port ' + PORT);
-    console.log('📱 Website: http://localhost:' + PORT);
-    console.log('🔗 Products API: http://localhost:' + PORT + '/api/products');
-    console.log('✅ Health Check: http://localhost:' + PORT + '/health');
-    console.log('📊 ' + products.length + ' products loaded in memory');
-    console.log('💾 Database: None - Using localStorage for user data');
+    console.log(' SkinLuxe Server running on port ' + PORT);
+    console.log(' Website: http://localhost:' + PORT);
+    console.log(' Products API: http://localhost:' + PORT + '/api/products');
+    console.log(' Health Check: http://localhost:' + PORT + '/health');
+    console.log(' ' + products.length + ' products loaded in memory');
+    console.log(' Database: None - Using localStorage for user data');
 });
